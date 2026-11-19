@@ -1,0 +1,23 @@
+% ==============================================================================
+% 1. INTRODUCCIÓN, OBJETIVOS Y ANTECEDENTES
+% ==============================================================================
+\section{Introducción y objetivos}
+
+	La Unidad 1 estableció la línea base secuencial en CPU del producto de matrices densas $C = A \times B$ y dejó abierta la pregunta central del proyecto: cuánto se gana al trasladar el cómputo a una GPU. El objetivo de la Unidad 2 es responderla con la implementación más simple posible, el \textbf{kernel naive}, que sirve además de punto de partida para todas las optimizaciones posteriores:
+
+	\begin{enumerate}
+		\item \textbf{Implementar} en CUDA un kernel en el que cada hilo calcula un elemento $C[i][j]$ leyendo $A$ y $B$ directamente de memoria global.
+		\item \textbf{Separar} en la medición el tiempo de cómputo puro del kernel (eventos CUDA) del tiempo total, que incluye las copias Host$\leftrightarrow$Device por el bus PCIe.
+		\item \textbf{Comparar} ambos tiempos con la versión $i\text{-}k\text{-}j$ en CPU \textbf{medida en el mismo servidor}, de modo que el speedup $S = T_{\text{CPU}} / T_{\text{GPU}}$ no mezcle máquinas distintas.
+		\item \textbf{Validar} numéricamente el resultado del dispositivo contra la referencia en CPU con tolerancia $10^{-4}$.
+	\end{enumerate}
+
+	El alcance se mantiene en FP32, matrices cuadradas de $1024^2$, $2048^2$ y $4096^2$, y transferencias secuenciales sin solapamiento (sin \textit{streams} ni memoria fijada).
+
+\subsection{Antecedentes}
+
+	El modelo de ejecución SIMT agrupa los hilos en \textit{warps} de 32 hebras que ejecutan la misma instrucción sobre datos distintos; el paralelismo de datos se explota repartiendo el trabajo entre miles de hilos y el rendimiento queda limitado por la jerarquía de memoria (registros, memoria compartida, L1/L2 y memoria global) \cite{kirkhwu}. La guía de programación de CUDA documenta el modelo de grillas y bloques, la sincronización con \texttt{\_\_syncthreads()} y la medición con eventos \cite{nvidia}.
+
+	El kernel naive es el ejemplo canónico de la guía y, aunque su rendimiento es pobre, resulta indispensable como referencia: cualquier optimización posterior (memoria compartida, vectorización, \textit{register tiling}) se juzga contra él. El estado del arte en GPU está representado por bibliotecas como cuBLAS, que se emplearán como techo comparativo en la Unidad 3 y que, igual que OpenBLAS en la Unidad 1, \textbf{solo se llaman por su API} y no forman parte del código evaluable \cite{goto2008}.
+
+	El modelo de \textit{roofline} permite interpretar los resultados en términos de intensidad aritmética y ancho de banda \cite{williams2009}; se usa en la sección de resultados para explicar por qué el kernel naive es un problema limitado por memoria mientras que la versión con tiling se acerca al límite de cómputo.

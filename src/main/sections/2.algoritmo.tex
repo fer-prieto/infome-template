@@ -1,0 +1,54 @@
+% ==============================================================================
+% 2. DESCRIPCIÓN DEL ALGORITMO
+% ==============================================================================
+\section{Descripción del algoritmo}
+
+\subsection{Producto de matrices y FLOPs}
+
+	Dadas dos matrices $A$ y $B$ de $N \times N$, el producto $C = A \times B$ se define como:
+
+	\begin{equation}
+		C[i][j] = \sum_{k=0}^{N-1} A[i][k] \cdot B[k][j]
+		\label{eqn:producto}
+	\end{equation}
+
+	Cada elemento de $C$ requiere $N$ multiplicaciones y $N-1$ sumas, de modo que el total de operaciones es $\text{FLOPs} = 2\,N^3$ y el rendimiento se expresa como:
+
+	\begin{equation}
+		\text{GFLOPS} = \frac{2\,N^3}{t \cdot 10^9}
+		\label{eqn:gflops}
+	\end{equation}
+
+	Las matrices se almacenan en orden por filas (\textit{row-major}): el elemento $(i,j)$ está en $m[i \cdot N + j]$, la misma convención de la Unidad 1 y la que impone el arreglo contiguo que se copia al dispositivo.
+
+\subsection{Diseño del kernel naive}
+
+	El kernel asigna \textbf{un hilo por elemento} de $C$. La grilla y los bloques se eligen con una forma bidimensional que replica la disposición de la matriz:
+
+	\begin{itemize}
+		\item \textbf{Bloque:} $16 \times 16 = 256$ hilos (\texttt{dim3(16,16)}).
+		\item \textbf{Grilla:} $\lceil N/16 \rceil \times \lceil N/16 \rceil$ bloques. Para $N = 4096$ son $256 \times 256 = 65\,536$ bloques.
+		\item \textbf{Índices:} $i = \text{blockIdx.y} \cdot 16 + \text{threadIdx.y}$ y $j = \text{blockIdx.x} \cdot 16 + \text{threadIdx.x}$; el hilo se descarta si $i \geq N$ o $j \geq N$.
+	\end{itemize}
+
+	El cuerpo del hilo recorre el eje $k$ completo acumulando en un registro y escribe $C[i][j]$ una sola vez:
+
+	\begin{verbatim}
+float acc = 0.0f;
+for (int k = 0; k < N; ++k)
+    acc += A[i * N + k] * B[k * N + j];
+C[i * N + j] = acc;
+	\end{verbatim}
+
+	El patrón de acceso es asimétrico y esa asimetría explica el resultado. Para un warp (32 hilos con \texttt{threadIdx.y} fijo y \texttt{threadIdx.x} variable) los 16 hilos de una misma fila leen $A[i][k]$ de forma \textbf{contigua} —una sola transacción de memoria por fila—, pero leen $B[k][j]$ en elementos separados $N$ posiciones: la columna de $B$ se recorre con un salto de $N \cdot 4$ bytes (4\,KiB para $N = 1024$, 16\,KiB para $N = 4096$). Cada iteración de $k$ toca, por tanto, una línea distinta de memoria y la memoria caché no logra reutilizar nada: el kernel es \textbf{limitado por ancho de banda} y no por capacidad de cómputo.
+
+\subsection{Separación de tiempos}
+
+	A diferencia de la Unidad 1, aquí interesa distinguir dos magnitudes que la consigna exige por separado:
+
+	\begin{itemize}
+		\item \textbf{Tiempo de cómputo puro} ($t_{\text{kernel}}$): dos eventos CUDA registrados alrededor del lanzamiento del kernel. No incluye ninguna copia.
+		\item \textbf{Tiempo total} ($t_{\text{total}}$): los mismos eventos rodeando la secuencia completa $A_{H \to D}$, $B_{H \to D}$, kernel y $C_{D \to H}$.
+	\end{itemize}
+
+	La diferencia $t_{\text{total}} - t_{\text{kernel}}$ es el costo de comunicación del bus PCIe, que se analiza como ancho de banda efectivo a partir del volumen transferido, $3\,N^2 \cdot 4$ bytes. Los buffers de dispositivo se reservan \textbf{fuera} de la medición y se reutilizan entre repeticiones, de modo que \texttt{cudaMalloc} nunca contamina los tiempos.

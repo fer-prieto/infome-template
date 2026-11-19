@@ -1,0 +1,101 @@
+% ==============================================================================
+% 5. RESULTADOS
+% ==============================================================================
+\section{Resultados}
+
+	Los valores provienen de \texttt{results/unidad2/summary\_\textless run\textgreater{}.csv} y \texttt{baseline/cpu\_summary\_\textless run\textgreater{}.csv}. Todos los tiempos son medianas de 5 repeticiones medidas con 1 calentamiento previo.
+
+\subsection{Línea base en CPU del servidor}
+
+	La CPU se re-midió antes de la GPU, con el mismo binario de la Unidad 1 compilado con \texttt{-O3 -march=native} (AVX-512 disponible en el Xeon Gold 6134).
+
+	\begin{table}[H]
+		\centering
+		\caption{Línea base en CPU medida en el servidor ($T_{\text{CPU}}$ de los speedups).}
+		\begin{tabular}{lcccr}
+			\hline
+			\textbf{Implementación} & \textbf{N} & \textbf{$t$ mediana (s)} & \textbf{GFLOPS} & \textbf{Reps} \bigstrut\\
+			\hline
+			cpu\_ijk & 1024 & 3.2237 & 0.67 & 5 \\
+			cpu\_ikj & 1024 & 0.1613 & 13.31 & 5 \\
+			cpu\_ijk & 2048 & 35.5246 & 0.48 & 5 \\
+			cpu\_ikj & 2048 & 1.3665 & 12.57 & 5 \\
+			cpu\_ijk & 4096 & --- & --- & --- \\
+			cpu\_ikj & 4096 & 17.1723 & 8.00 & 5 \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:cpu-u2}
+	\end{table}
+
+	\texttt{cpu\_ijk} se omite en $N = 4096$ porque el plan de la Unidad 1 lo excluye para tamaños grandes (tarda $\approx 35$\,s solo en $N = 2048$). El rendimiento de \texttt{cpu\_ikj} cae de 13.31 a 8.00\,GFLOPS al pasar de 1024 a 4096 porque a partir de los 64 MiB por matriz la reutilización en caché L2 (16 MiB) desaparece.
+
+\subsection{Kernel naive en la GPU}
+
+	\begin{table}[H]
+		\centering
+		\caption{Kernel naive: tiempo de cómputo puro, tiempo total y rendimiento.}
+		\begin{tabular}{cccccc}
+			\hline
+			\textbf{N} & \textbf{$t_{\text{kernel}}$ (s)} & \textbf{$\sigma$ (s)} & \textbf{$t_{\text{total}}$ (s)} & \textbf{GFLOPS} & \textbf{Fracción PCIe} \bigstrut\\
+			\hline
+			1024 & 0.023950 & 0.000166 & 0.026685 & 89.66 & 10.2\,\% \\
+			2048 & 0.046263 & 0.002617 & 0.057315 & 371.35 & 19.3\,\% \\
+			4096 & 0.397015 & 0.000165 & 0.441634 & 346.18 & 10.1\,\% \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:gpu-u2}
+	\end{table}
+
+	El esfuerzo se reparte entre $N^2$ hilos: 1 048 576 hilos para $N = 1024$ y 16 777 216 para $N = 4096$, ejecutados en bloques de 256. El kernel ocupa el 80--90\,\% del tiempo total; el resto son las copias por PCIe.
+
+\subsection{Speedup frente a la CPU}
+
+	\begin{table}[H]
+		\centering
+		\caption{Speedup del kernel naive respecto de \texttt{cpu\_ikj} del mismo servidor.}
+		\begin{tabular}{ccccc}
+			\hline
+			\textbf{N} & \textbf{$T_{\text{CPU}}$ (s)} & \textbf{$S_{\text{kernel}}$} & \textbf{$S_{\text{total}}$} & \textbf{GFLOPS$_{\text{CPU}}$ / GFLOPS$_{\text{GPU}}$} \bigstrut\\
+			\hline
+			1024 & 0.1613 & 6.74$\times$ & 6.05$\times$ & 13.31 / 89.66 \\
+			2048 & 1.3665 & 29.54$\times$ & 23.84$\times$ & 12.57 / 371.35 \\
+			4096 & 17.1723 & 43.25$\times$ & 38.88$\times$ & 8.00 / 346.18 \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:speedup-u2}
+	\end{table}
+
+	El speedup \textbf{crece con $N$}: 6.74$\times$, 29.54$\times$ y 43.25$\times$. La razón es doble. Por un lado, la GPU mantiene su rendimiento casi constante a partir de $N = 2048$ (371 y 346\,GFLOPS) mientras la CPU cae de 12.57 a 8.00\,GFLOPS porque sus matrices dejan de caber en caché. Por otro, a $N = 1024$ el kernel naive desperdicia el paralelismo disponible, como se discute a continuación.
+
+\subsection{Análisis}
+
+	\textbf{El kernel naive es débil, y de forma no monótona.} El rendimiento pasa de 89.66\,GFLOPS en $N=1024$ a 371.35\,GFLOPS en $N=2048$ y baja levemente a 346.18\,GFLOPS en $N=4096$. Las dos primeras cifras corresponden a la misma carga por hilo, así que un factor $4{,}1\times$ entre ellas no puede atribuirse al tamaño: la explicación más plausible es el patrón de acceso a $B$. La columna de $B$ se recorre con un salto de $N \cdot 4$ bytes (4\,KiB, 8\,KiB y 16\,KiB), y con 4\,KiB el conjunto de líneas que toca un warp se concentra en pocos conjuntos de la caché L1/L2, generando conflictos; con 8\,KiB y 16\,KiB el conflicto se reparte. Las tres mediciones son estables (coeficiente de variación de 0.69\,\%, 5.53\,\% y 0.04\,\%), de modo que la diferencia no es ruido. Queda como observación a confirmar con el perfilador en la Unidad 3.
+
+	\textbf{Distancia al techo del dispositivo.} Con $3584 \cdot 2 \cdot 1{,}556\ \text{GHz} \approx 11{,}1$\,TFLOP/s de FP32, el kernel naive alcanza el 0.8\,\% ($N=1024$), 3.3\,\% ($N=2048$) y 3.1\,\% ($N=4096$) del máximo teórico. Está lejos porque cada iteración de $k$ trae de memoria global $2N$ elementos para producir una sola suma: la intensidad aritmética efectiva es de $O(1)$ FLOP por byte y el kernel queda \textbf{limitado por ancho de banda}, exactamente el régimen que el modelo de \textit{roofline} identifica como no optimizable sin reutilizar datos \cite{williams2009}.
+
+	\textbf{Costo de la comunicación (PCIe).} El volumen transferido es $3N^2 \cdot 4$ bytes: 12.6\,MB, 50.3\,MB y 201.3\,MB. El tiempo de transferencia (2.73\,ms, 11.05\,ms y 44.62\,ms) implica un ancho de banda efectivo de \textbf{4.60, 4.55 y 4.51\,GB/s}, muy estable y muy por debajo de los $\approx 12$\,GB/s prácticos de un enlace PCIe Gen3 $\times$16. La causa es que las copias usan memoria \textbf{paginable} y no se solapan con el cómputo: no hay memoria fijada (\textit{pinned}) ni \textit{streams}. Aun así, como el kernel naive es lento, la transferencia solo pesa 10--19\,\% del total; en la Unidad 3, con un kernel 5 a 19 veces más rápido, ese porcentaje se vuelve dominante.
+
+	\begin{table}[H]
+		\centering
+		\caption{Checksums y validación del kernel naive contra \texttt{cpu\_ikj}.}
+		\begin{tabular}{cccc}
+			\hline
+			\textbf{N} & \textbf{Error relativo} & \textbf{Error máx.\ absoluto} & \textbf{¿Válido?} \bigstrut\\
+			\hline
+			1024 & 0.00 & 0.00 & sí \\
+			2048 & 0.00 & 0.00 & sí \\
+			4096 & 0.00 & 0.00 & sí \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:validacion-u2}
+	\end{table}
+
+	El error es exactamente cero en los tres tamaños: la GPU acumula en el registro $acc$ en el mismo orden que la CPU ($k = 0, 1, \dots, N-1$) y ambas plataformas fusionan multiplicación y suma (FMA), de modo que el resultado es bit a bit idéntico. El checksum de $C$ coincide con el del binario de CPU, lo que confirma que ambas herramientas operan sobre las mismas matrices de entrada.
+
+\subsection{Figuras}
+
+	\insertimage[\label{img:u2-tiempo}]{unidad2/tiempo_vs_n}{scale=0.62}{Tiempo de cómputo puro del kernel naive frente a $N$ (escala logarítmica).}
+
+	\insertimage[\label{img:u2-gflops}]{unidad2/gflops_vs_n}{scale=0.62}{Rendimiento del kernel naive en GFLOPS frente a $N$.}
+
+	\insertimage[\label{img:u2-speedup}]{unidad2/speedup_vs_n}{scale=0.62}{Speedup del kernel naive frente a \texttt{cpu\_ikj} del servidor: $S_{\text{kernel}}$ y $S_{\text{total}}$.}

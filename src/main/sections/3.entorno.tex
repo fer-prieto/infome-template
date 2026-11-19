@@ -1,0 +1,39 @@
+% ==============================================================================
+% 3. ENTORNO DE PRUEBA
+% ==============================================================================
+\section{Entorno de prueba}
+
+	Los valores de esta tabla provienen de \texttt{results/unidad2/env/} (\texttt{hardware\_\textless run\textgreater{}.txt}, \texttt{gpu\_\textless run\textgreater{}\_\{before,after\}.csv} y \texttt{build\_\textless run\textgreater{}.txt}), generados por los scripts del repositorio antes y después de la corrida.
+
+	\begin{table}[H]
+		\centering
+		\caption{Entorno de prueba de la Unidad 2 (servidor del curso).}
+		\small
+		\begin{tabular}{lp{10.9cm}}
+			\hline
+			\textbf{Componente} & \textbf{Valor} \bigstrut\\
+			\hline
+			CPU & 2 $\times$ Intel Xeon Gold 6134 @ 3.20 GHz \\
+			Núcleos / hilos & 16 núcleos / 32 hilos (2 sockets, 8 núcleos por socket) \\
+			Cachés & L1d 512 KiB, L1i 512 KiB, L2 16 MiB, L3 49,5 MiB \\
+			Nodos NUMA & 2 \\
+			Memoria RAM & 125 GiB \\
+			GPU & NVIDIA Quadro GP100, \textit{compute capability} 6.0 (\texttt{sm\_60}) \\
+			Memoria de la GPU & 16 384 MiB (HBM2) \\
+			Enlace GPU--CPU & PCIe Gen3 $\times$16 \\
+			Reloj máximo del SM & 1556 MHz \\
+			Límite de potencia & 235 W \\
+			Driver NVIDIA & 580.178.04 \\
+			Toolkit CUDA & nvcc 12.2.140 (CUDA 12.2) \\
+			Compilador CPU & g++ 11.4.0 (\texttt{-O3 -march=native}) \\
+			Flags del kernel & \texttt{-O3 -std=c++17 -arch=sm\_60} (sin \texttt{--use\_fast\_math}) \\
+			Sistema operativo & Linux 5.15 (Ubuntu 22.04) \\
+			Make / Python & GNU Make 4.3 · Python 3.10.12 \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:entorno-u2}
+	\end{table}
+
+	Con 3584 núcleos CUDA y el reloj máximo registrado por el dispositivo, el techo teórico de FP32 es $3584 \cdot 2 \cdot 1{,}556\ \text{GHz} \approx 11{,}1$\,TFLOP/s. Ese valor se usa solo como referencia de escala; la comparación principal se hace contra \texttt{cuBLAS} medido en el mismo equipo (Unidad 3).
+
+	\textbf{Sobre los relojes:} el servidor es compartido y no se fijaron las frecuencias (la opción \texttt{--use-sudo} del repositorio permite hacerlo, pero modifica un recurso global). Antes y después de cada corrida se registraron relojes, temperatura, potencia y motivos de \textit{throttling}; la dispersión de cada medición queda reportada como desviación estándar y coeficiente de variación en el resumen de resultados.

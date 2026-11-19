@@ -1,0 +1,24 @@
+% ==============================================================================
+% 6. OBSERVACIONES, LIMITACIONES Y SIGUIENTES PASOS
+% ==============================================================================
+\section{Observaciones y limitaciones}
+\label{sec:observaciones}
+
+	\begin{itemize}
+		\item \textbf{Servidor compartido sin relojes fijados:} la GPU no estaba en uso por otros procesos durante la corrida (conteo de procesos de cómputo ajenos igual a cero antes y después), pero no se fijaron las frecuencias porque es un recurso global. La dispersión quedó registrada: el coeficiente de variación del tiempo de kernel es de 0.69\,\%, 5.53\,\% y 0.04\,\% para $N = 1024$, $2048$ y $4096$.
+		\item \textbf{Transferencias sin optimizar:} las copias usan memoria paginable y no se solapan con el cómputo, por lo que el ancho de banda efectivo (4.5--4.6\,GB/s) es aproximadamente un tercio del práctico del enlace. Es una decisión de alcance: la Unidad 2 mide el costo real del esquema más simple.
+		\item \textbf{Error de validación nulo:} el resultado de la GPU es bit a bit igual al de la CPU porque el orden de acumulación y el uso de FMA coinciden. Esto valida el kernel, pero no permite observar diferencias de redondeo; si se comparara contra cuBLAS (que reordena las sumas) el error sería del orden de $10^{-7}$ relativo, como en la Unidad 1 frente a OpenBLAS.
+		\item \textbf{Re-muestreo obligatorio de la CPU:} los tiempos de la Unidad 1 se tomaron en otra máquina, y el servidor rinde entre 3 y 7 veces menos en \texttt{cpu\_ikj} (13.31 vs 34.95\,GFLOPS en $N=1024$). Los speedups de este reporte usan únicamente medidas del servidor.
+		\item \textbf{Anomalía en $N = 1024$:} el rendimiento del kernel naive es 4.1 veces menor que en $N = 2048$ con la misma carga por hilo. Se atribuye al patrón \textit{strided} sobre la columna de $B$ y a conflictos de conjunto en caché; es una hipótesis pendiente de confirmar con el perfilador.
+		\item \textbf{Alcance numérico:} solo FP32 y matrices cuadradas. Otras precisiones y formas quedan como extensión.
+	\end{itemize}
+
+\subsection{Siguientes pasos}
+
+	\begin{enumerate}
+		\item Implementar el kernel con \textbf{memoria compartida (tiling)}: bloques de $32 \times 32$ hilos que cargan cooperativamente submatrices de $A$ y $B$, con \texttt{\_\_syncthreads()} entre carga y consumo \cite{kirkhwu}.
+		\item Comparar la variante con \textit{padding} en los tiles frente a la variante sin \textit{padding}, para medir el efecto de los conflictos de banco.
+		\item Medir \texttt{cuBLAS} en el mismo equipo como techo práctico de la GPU, igual que OpenBLAS en la Unidad 1, y expresar el resultado propio como porcentaje de ese techo.
+		\item Evaluar el costo de comunicación con el kernel rápido: al reducir el tiempo de cómputo en un orden de magnitud, la fracción de PCIe pasa a dominar el tiempo total y justifica discutir memoria fijada y \textit{streams}.
+		\item Interpretar los resultados con el modelo de \textit{roofline} completo (intensidad aritmética frente a ancho de banda HBM2) y con métricas del perfilador si están disponibles en el servidor.
+	\end{enumerate}

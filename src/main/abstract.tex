@@ -1,4 +1,3 @@
-
 \begin{abstractd}
-	\lipsum[1] % Párrafo ejemplo, se puede borrar
+	Este reporte documenta la segunda entrega del proyecto de multiplicación de matrices de gran escala $C = A \times B$ en precisión simple (FP32). Se implementa desde cero un \textbf{kernel CUDA naive} en el que cada hilo calcula un elemento de $C$ accediendo directamente a memoria global, y se mide con \texttt{cudaEvent} el \textbf{tiempo de cómputo puro} del kernel y con \texttt{cudaMemcpy} el \textbf{tiempo total}, que incluye las transferencias Host$\leftrightarrow$Device. La línea base en CPU se re-mide en el mismo servidor para que el speedup sea válido. Para $N = 1024$, $2048$ y $4096$ el kernel alcanza $89{,}66$, $371{,}35$ y $346{,}18$\,GFLOPS, con speedups de $6{,}74\times$, $29{,}54\times$ y $43{,}25\times$ frente a la implementación secuencial $i\text{-}k\text{-}j$ del mismo equipo. Las transferencias por PCIe cuestan entre el 10\,\% y el 19\,\% del tiempo total y se comportan como un enlace de $\approx 4{,}5$\,GB/s.
 \end{abstractd}
