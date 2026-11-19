@@ -1,4 +1,4 @@
 
 \begin{abstractd}
-	\lipsum[1] % Párrafo ejemplo, se puede borrar
+	Este reporte documenta la primera entrega del proyecto de multiplicación de matrices de gran escala $C = A \times B$ en precisión simple (FP32). Se implementa desde cero la versión secuencial en CPU en C/C++ con dos órdenes de bucles —la ingenua $i\text{-}j\text{-}k$ y la optimizada $i\text{-}k\text{-}j$— y se miden el tiempo de cómputo, el speedup y los GFLOPS para matrices de $N = 1024$, $2048$ y $4096$. La versión $i\text{-}k\text{-}j$ alcanza un speedup de aproximadamente $36\times$ frente a $i\text{-}j\text{-}k$ y entre el 11\,\% y el 25\,\% del techo práctico de la CPU (OpenBLAS a 1 hilo). Estos resultados constituyen el denominador de referencia ($T_{\text{CPU}}$) para los speedups frente a los kernels CUDA de las Unidades 2 y 3.
 \end{abstractd}

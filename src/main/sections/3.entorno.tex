@@ -1,0 +1,34 @@
+% ==============================================================================
+% 3. ENTORNO DE PRUEBA
+% ==============================================================================
+\section{Entorno de prueba}
+
+	Los valores de esta tabla provienen de \texttt{results/unidad1/env\_\textless{}run\textgreater{}.json}, generado automáticamente por el arnés antes de la corrida.
+
+	\begin{table}[H]
+		\centering
+		\caption{Entorno de prueba de la Unidad 1.}
+		\begin{tabular}{lp{10.5cm}}
+			\hline
+			\textbf{Componente} & \textbf{Valor} \bigstrut\\
+			\hline
+			CPU & Intel Core i7-12700KF (Alder Lake) \\
+			Núcleos / hilos & 10 núcleos / 20 hilos (vista de WSL2) \\
+			SIMD soportado & SSE4.2, AVX, AVX2, FMA (sin AVX-512) \\
+			Caché L1d & 48 KiB \\
+			Caché L2 & 1.25 MiB (por núcleo) \\
+			Caché L3 & 25 MiB (compartida) \\
+			RAM & 15.5 GiB \\
+			Sistema operativo & Ubuntu 24.04.5 LTS (WSL2, kernel 6.18.54-microsoft) \\
+			Compilador & g++ (GCC) 13.3.0 \\
+			Flags de compilación & \texttt{-O3 -march=native -std=c++17 -Wall -Wextra -fPIC} \\
+			\texttt{-march=native} resuelve a & \texttt{alderlake} (AVX2, FMA) \\
+			Rust / make & rustc 1.99.1 · GNU Make 4.3 \\
+			Gobernador de CPU & no disponible (WSL2) \\
+			OpenBLAS & 0.3.26 DYNAMIC\_ARCH (MAX\_THREADS=64) \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:entorno}
+	\end{table}
+
+	\textbf{Nota sobre WSL2:} la medición se ejecutó dentro de WSL2, que no expone los sensores de temperatura ni el gobernador de frecuencias del host. Por ello el reporte no incluye temperatura ni throttling térmico (ver Sección~\ref{sec:observaciones}).

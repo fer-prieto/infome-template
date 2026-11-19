@@ -1,0 +1,14 @@
+% ==============================================================================
+% 4. METODOLOGÍA
+% ==============================================================================
+\section{Metodología}
+
+	\begin{itemize}
+		\item \textbf{Generación de datos:} matrices en $[-1, 1]$ con semilla fija $42$ (streams independientes para $A$ y $B$), idénticas en el binario C++ y en el arnés.
+		\item \textbf{Medición de tiempo:} con \texttt{std::chrono::steady\_clock} \textbf{dentro de C++}, rodeando exclusivamente el triple bucle (o la llamada a \texttt{cblas\_sgemm}). No se incluye la generación de datos ni la reserva de memoria.
+		\item \textbf{Tiempo de cómputo puro vs.\ total:} en CPU el tiempo reportado es el de cómputo puro. La separación «cómputo vs.\ transferencia Host$\leftrightarrow$Device» (\texttt{cudaEventRecord}/\texttt{cudaMemcpy}) corresponde a la Unidad 2, donde sí habrá copias por PCIe.
+		\item \textbf{Calentamiento y repeticiones:} 1 warm-up no medido + 5 repeticiones medidas por (implementación, $N$); para $N = 4096$ se usan 3 repeticiones. Se reporta la \textbf{mediana} (robusta a valores atípicos), además del mínimo, la media y la desviación estándar.
+		\item \textbf{GFLOPS y speedup:} $\text{GFLOPS} = 2\,N^3 / (t_{\text{mediana}} \cdot 10^9)$; el speedup de referencia de esta unidad es $S = T_{ijk} / T_{ikj}$ (efecto de la localidad de caché).
+		\item \textbf{Validación de correctitud:} comparación contra una referencia calculada en $f64$ (error relativo de Frobenius y error absoluto máximo) y verificación probabilística de Freivalds; tolerancia $10^{-4}$. La referencia preferida es \texttt{cpu\_openblas\_1t}.
+		\item \textbf{Control de hilos de OpenBLAS:} se mide \texttt{cpu\_openblas\_1t} (1 hilo, la comparación justa con el código secuencial) y \texttt{cpu\_openblas\_mt} (20 hilos, solo informativa como techo absoluto). El porcentaje frente a OpenBLAS se calcula contra la variante de 1 hilo.
+	\end{itemize}

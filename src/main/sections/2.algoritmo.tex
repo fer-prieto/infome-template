@@ -1,0 +1,57 @@
+% ==============================================================================
+% 2. DESCRIPCIÓN DEL ALGORITMO
+% ==============================================================================
+\section{Descripción del algoritmo}
+
+\subsection{Producto de matrices y FLOPs}
+
+	Dadas dos matrices $A$ y $B$ de $N \times N$, el producto $C = A \times B$ se define como:
+
+	\begin{equation}
+		C[i][j] = \sum_{k=0}^{N-1} A[i][k] \cdot B[k][j]
+		\label{eqn:producto}
+	\end{equation}
+
+	Cada elemento $C[i][j]$ requiere $N$ multiplicaciones y $N-1$ sumas. Como hay $N^2$ elementos, el número total de operaciones en punto flotante es:
+
+	\begin{equation}
+		\text{FLOPs} = 2\,N^3
+		\label{eqn:flops}
+	\end{equation}
+
+	El rendimiento se expresa en GFLOPS ($1\ \text{GFLOP} = 10^9$ operaciones de punto flotante por segundo):
+
+	\begin{equation}
+		\text{GFLOPS} = \frac{2\,N^3}{t \cdot 10^9}
+		\label{eqn:gflops}
+	\end{equation}
+
+\subsection{Disposición en memoria}
+
+	Las matrices se almacenan como \textbf{arreglos unidimensionales en orden por filas} (\textit{row-major}): el elemento $(i,j)$ está en $m[i \cdot N + j]$. Esta es la misma disposición que usará CUDA, de modo que los kernels futuros y la versión CPU comparten la convención. Los datos se alinean a 64 bytes (una línea de caché) y se generan con un generador pseudoaleatorio reproducible (SplitMix64, semilla fija) en el intervalo $[-1, 1]$.
+
+\subsection{Órdenes de bucles: i-j-k frente a i-k-j}
+
+	Se implementan dos variantes que recorren los mismos datos en distinto orden.
+
+	\textbf{$i\text{-}j\text{-}k$ (ingenua, referencia de correctitud).} El bucle interno recorre $k$:
+
+	\begin{verbatim}
+for (i) for (j) { suma = 0; for (k) suma += A[i][k]*B[k][j]; C[i][j] = suma; }
+	\end{verbatim}
+
+	Cada iteración lee $B[k][j]$ saltando una fila completa en memoria (acceso \textit{strided}), lo que produce \textbf{fallos de caché por conflicto} cuando $N$ es potencia de 2 y, al ser una reducción (\texttt{suma += ...}), el compilador no puede reordenar las sumas en punto flotante sin \texttt{-ffast-math}. Resultado: apenas se vectoriza y es la versión más lenta.
+
+	\textbf{$i\text{-}k\text{-}j$ (optimizada, línea base oficial).} El bucle interno recorre $j$:
+
+	\begin{verbatim}
+for (i) for (k) { aik = A[i][k]; for (j) C[i][j] += aik * B[k][j]; }
+	\end{verbatim}
+
+	\begin{itemize}
+		\item \textbf{Localidad espacial:} el bucle interno recorre una fila de $B$ y una fila de $C$ de forma contigua (elementos consecutivos en memoria).
+		\item \textbf{Localidad temporal:} $a_{ik}$ queda en un registro durante todo el bucle $j$, y la fila $i$ de $C$ se reutiliza en cada iteración de $k$, permaneciendo en L1/L2.
+		\item \textbf{Vectorización:} las iteraciones de $j$ son independientes, por lo que el compilador vectoriza el bucle con SIMD (en esta CPU, AVX2 con FMA: 8 \textit{floats} por instrucción y multiply-add fusionado).
+	\end{itemize}
+
+	La implementación está en \texttt{include/matmul\_cpu.h} y \texttt{src/cpu/matmul\_cpu.cpp}, escrita desde cero. Las funciones con interfaz C (\texttt{extern "C"}) reciben los punteros a $A$, $B$ y $C$ (con \texttt{\_\_restrict}), el tamaño $N$ en 64 bits, ponen $C$ a cero antes de acumular y no reservan memoria (la gestiona el llamador).

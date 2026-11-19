@@ -1,0 +1,18 @@
+% ==============================================================================
+% 1. INTRODUCCIÓN, OBJETIVOS Y ANTECEDENTES
+% ==============================================================================
+\section{Introducción y objetivos}
+
+	La multiplicación de matrices densas (GEMM) es una de las operaciones más estudiadas en computación de alto rendimiento y el bloque de construcción de numerosos algoritmos numéricos y de aprendizaje automático. El objetivo de la Unidad 1 es establecer una \textbf{línea base secuencial en CPU} correcta, medible y reproducible que sirva de:
+
+	\begin{enumerate}
+		\item \textbf{Referencia de correctitud} para las versiones en GPU.
+		\item \textbf{Denominador de speedup} ($S = T_{\text{CPU}} / T_{\text{GPU}}$) en las Unidades 2 y 3.
+		\item \textbf{Punto de partida} para justificar la optimización con memoria compartida (tiling) y para cuantificar la distancia al techo práctico de la CPU (OpenBLAS).
+	\end{enumerate}
+
+	El alcance se limita a precisión simple (FP32), matrices cuadradas de $1024 \times 1024$, $2048 \times 2048$ y $4096 \times 4096$, y a un análisis cuantitativo de la jerarquía de memoria.
+
+\subsection{Antecedentes}
+
+	GEMM es probablemente la operación más optimizada de la computación: las bibliotecas BLAS —y en particular el trabajo de Goto y van de Geijn sobre empaquetado de datos, tiling multinivel y micro-kernels en ensamblador— definen el estado del arte en CPU \cite{goto2008}. En este trabajo la implementación es \textbf{propia y escrita desde cero}, porque es precisamente lo que evalúa la consigna; las bibliotecas optimizadas (OpenBLAS) se usan únicamente como \textbf{referencia comparativa} para mostrar el techo práctico de la CPU y como referencia de validación, nunca como objeto de reimplementación. El material educativo consultado se estudia y se cita en \texttt{docs/referencias.md}.

@@ -16,7 +16,7 @@ No hace falta leer la plantilla ni los `.tex` para conocer el contenido del info
 La fuente de contenido lista para consumir es el Markdown de la entrega:
 
 ```text
-entregas/1ra_entrega/Alto_Rendimiento-1ra_entrega-David_Prieto.md
+output_docs/Alto_Rendimiento-1ra_entrega-David_Prieto.md
 ```
 
 - Es texto plano, con encabezados, tablas y estilo ya normalizados: se puede leer
@@ -28,15 +28,14 @@ entregas/1ra_entrega/Alto_Rendimiento-1ra_entrega-David_Prieto.md
 Si la pregunta es sobre **cómo se compila o cómo está armada la plantilla**, ahí sí
 hay que mirar `main.tex`, `src/main/template.tex` o `templates/`.
 
-## Estructura de `entregas/`
+## Estructura de `output_docs/`
 
 Cada entrega vive en su propia carpeta y contiene el PDF y su Markdown:
 
 ```text
-entregas/
-└── 1ra_entrega/
-    ├── Alto_Rendimiento-1ra_entrega-David_Prieto.pdf
-    └── Alto_Rendimiento-1ra_entrega-David_Prieto.md
+output_docs/
+	├── Alto_Rendimiento-1ra_entrega-David_Prieto.pdf
+	└── Alto_Rendimiento-1ra_entrega-David_Prieto.md
 ```
 
 El `.md` se genera con la skill `pdfmd` (nunca se edita el PDF):

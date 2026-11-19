@@ -1,0 +1,72 @@
+% ==============================================================================
+% 5. RESULTADOS BASE
+% ==============================================================================
+\section{Resultados base}
+
+	Los valores provienen de \texttt{results/unidad1/summary\_\textless{}run\textgreater{}.csv}. Los GFLOPS usan la mediana.
+
+\subsection{Tiempo de cómputo y GFLOPS}
+
+	\begin{table}[H]
+		\centering
+		\caption{Tiempo de cómputo (mediana) y GFLOPS por implementación y tamaño.}
+		\begin{tabular}{lcccr}
+			\hline
+			\textbf{Implementación} & \textbf{Tipo} & \textbf{N} & \textbf{t\_mediana (s)} & \textbf{GFLOPS} \bigstrut\\
+			\hline
+			cpu\_ijk & propia & 1024 & 2.212 & 0.97 \\
+			cpu\_ikj & propia & 1024 & 0.0614 & 34.95 \\
+			cpu\_ijk & propia & 2048 & 24.207 & 0.71 \\
+			cpu\_ikj & propia & 2048 & 0.654 & 26.26 \\
+			cpu\_ijk & propia & 4096 & --- & --- \\
+			cpu\_ikj & propia & 4096 & 8.882 & 15.47 \\
+			cpu\_openblas\_1t & referencia & 1024 & 0.0157 & 137.01 \\
+			cpu\_openblas\_1t & referencia & 2048 & 0.122 & 140.61 \\
+			cpu\_openblas\_1t & referencia & 4096 & 0.959 & 143.38 \\
+			cpu\_openblas\_mt & referencia & 1024 & 0.0035 & 611.35 \\
+			cpu\_openblas\_mt & referencia & 2048 & 0.0237 & 724.88 \\
+			cpu\_openblas\_mt & referencia & 4096 & 0.175 & 784.37 \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:resultados}
+	\end{table}
+
+	\texttt{cpu\_ijk} se omite en $N = 4096$ por ser demasiado lenta para $N > 2048$ (tarda $\approx 24$\,s solo en $N = 2048$, y en $4096$ la matriz de 64\,MiB no cabe en la caché L3 de 25\,MiB).
+
+\subsection{Speedup y porcentaje de OpenBLAS}
+
+	\begin{table}[H]
+		\centering
+		\caption{Speedup de i-k-j frente a i-j-k y porcentaje respecto a OpenBLAS (1 hilo).}
+		\begin{tabular}{ccc}
+			\hline
+			\textbf{N} & \textbf{$S = T_{ijk} / T_{ikj}$} & \textbf{\% de OpenBLAS} \bigstrut\\
+			\hline
+			1024 & 36.0 & 25.5\,\% \\
+			2048 & 37.0 & 18.7\,\% \\
+			4096 & --- & 10.8\,\% \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:speedup}
+	\end{table}
+
+	El speedup de $N = 4096$ no se reporta porque \texttt{cpu\_ijk} se omitió en ese tamaño. El porcentaje de OpenBLAS se calcula como $\text{GFLOPS}_{ikj} / \text{GFLOPS}_{openblas\_1t} \times 100$.
+
+\subsection{Validación de correctitud}
+
+	\begin{table}[H]
+		\centering
+		\caption{Validación de $i\text{-}k\text{-}j$ frente a la referencia OpenBLAS (1 hilo).}
+		\begin{tabular}{cccc}
+			\hline
+			\textbf{Implementación} & \textbf{N} & \textbf{Error relativo} & \textbf{Freivalds} \bigstrut\\
+			\hline
+			cpu\_ikj & 1024 & $5.85 \times 10^{-7}$ & $5.41 \times 10^{-7}$ \\
+			cpu\_ikj & 2048 & $8.45 \times 10^{-7}$ & $8.48 \times 10^{-7}$ \\
+			cpu\_ikj & 4096 & $1.19 \times 10^{-6}$ & $1.16 \times 10^{-6}$ \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:validacion}
+	\end{table}
+
+	Todos los errores quedan varios órdenes por debajo de la tolerancia $10^{-4}$ (el error absoluto máximo es de $\approx 3.7 \times 10^{-4}$ en $N = 4096$).

@@ -1,0 +1,22 @@
+% ==============================================================================
+% 6. OBSERVACIONES, LIMITACIONES Y SIGUIENTES PASOS
+% ==============================================================================
+\section{Observaciones y limitaciones}
+\label{sec:observaciones}
+
+	\begin{itemize}
+		\item \textbf{Entorno WSL2 sin sensores:} la máquina de prueba es WSL2 sobre Windows, por lo que \textbf{no se pudo registrar temperatura, frecuencia ni throttling} térmico (el arnés los deja vacíos). No es una limitación del código sino del entorno virtualizado.
+		\item \textbf{Estabilidad de la medición:} el coeficiente de variación (CV) se mantiene bajo ($\leq 6.4$\,\% en casi todos los casos), lo que indica una medición estable.
+		\item \textbf{Speedup y localidad de caché:} $i\text{-}k\text{-}j$ es $\approx 36\text{--}37\times$ más rápido que $i\text{-}j\text{-}k$ gracias a la localidad espacial/temporal y a la vectorización AVX2+FMA.
+		\item \textbf{Distancia al techo de OpenBLAS:} $i\text{-}k\text{-}j$ alcanza 25.5\,\% ($N=1024$), 18.7\,\% ($N=2048$) y 10.8\,\% ($N=4096$) del techo secuencial. La brecha \textbf{crece con $N$} porque $i\text{-}k\text{-}j$ no aplica tiling multinivel, empaquetado de datos ni micro-kernels en ensamblador; cuando $N$ excede la caché L2 (1.25\,MiB), la matriz ya no cabe en caché y el rendimiento cae de $\approx 35$ a $\approx 15$\,GFLOPS. Esta diferencia es justamente la motivación para el tiling en las Unidades 2 y 3, y es consistente con el modelo Roofline \cite{williams2009}.
+		\item \textbf{Precisión:} el análisis se limita a FP32; otras precisiones quedan como extensión.
+	\end{itemize}
+
+\subsection{Siguientes pasos}
+
+	\begin{enumerate}
+		\item Implementar el \textbf{kernel CUDA naive} (un hilo por elemento, acceso directo a memoria global) en la máquina con GPU NVIDIA (RTX 4060 Ti) \cite{nvidia}.
+		\item Instrumentar con \texttt{cudaEventRecord} (tiempo de kernel) y \texttt{cudaMemcpy} (tiempo de transferencia Host$\leftrightarrow$Device) para separar cómputo y PCIe.
+		\item Comparar $S = T_{\text{CPU}} / T_{\text{GPU}}$ contra la línea base aquí establecida.
+		\item En la Unidad 3, optimizar con \textbf{memoria compartida (tiling)} siguiendo la técnica clásica de bloques y sincronización \cite{kirkhwu}, y contrastar con \texttt{cuBLAS} como techo en GPU.
+	\end{enumerate}
