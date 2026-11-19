@@ -1,0 +1,37 @@
+% ==============================================================================
+% 3. ENTORNO DE PRUEBA
+% ==============================================================================
+\section{Entorno de prueba}
+
+	Se usa el mismo servidor de la Unidad 2, de modo que los resultados de ambas entregas son comparables y comparten la línea base en CPU. Los valores provienen de \texttt{results/unidad3/env/}.
+
+	\begin{table}[H]
+		\centering
+		\caption{Entorno de prueba de la Unidad 3 (servidor del curso).}
+		\small
+		\begin{tabular}{lp{10.2cm}}
+			\hline
+			\textbf{Componente} & \textbf{Valor} \bigstrut\\
+			\hline
+			CPU & 2 $\times$ Intel Xeon Gold 6134 @ 3.20 GHz \\
+			Núcleos / hilos & 16 núcleos / 32 hilos (2 sockets) \\
+			Cachés & L1d 512 KiB, L1i 512 KiB, L2 16 MiB, L3 49,5 MiB \\
+			Memoria RAM & 125 GiB \\
+			GPU & NVIDIA Quadro GP100, \textit{compute capability} 6.0 (\texttt{sm\_60}) \\
+			Memoria de la GPU & 16 384 MiB (HBM2) \\
+			Memoria compartida por SM & 48 KiB (configuración por defecto) \\
+			Bancos por SM & 32 de 4 bytes \\
+			Enlace GPU--CPU & PCIe Gen3 $\times$16 \\
+			Reloj máximo del SM & 1556 MHz \\
+			Driver / toolkit & 580.178.04 · nvcc 12.2.140 (CUDA 12.2) \\
+			Flags del kernel & \texttt{-O3 -std=c++17 -arch=sm\_60} (sin \texttt{--use\_fast\_math}) \\
+			Perfilador & Nsight Compute 2023.2.2.3 (sin permisos de contadores) \\
+			Sistema operativo & Linux 5.15 (Ubuntu 22.04) \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:entorno-u3}
+	\end{table}
+
+	Con 3584 núcleos CUDA al reloj máximo registrado (1556 MHz), el techo teórico de FP32 es $\approx 11{,}1$\,TFLOP/s. El techo \textbf{práctico} que se usa como referencia es \texttt{cuBLAS} medido en este mismo equipo: 6.05, 8.74 y 8.85\,TFLOP/s, es decir, entre el 54\,\% y el 79\,\% del máximo teórico.
+
+	Los relojes de la GPU \textbf{no} se fijaron (servidor compartido); se registraron relojes, temperatura, potencia y motivos de \textit{throttling} antes y después de la corrida, y la dispersión de cada medición queda en el resumen de resultados.

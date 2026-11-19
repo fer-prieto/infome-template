@@ -1,0 +1,36 @@
+% ==============================================================================
+% 6. CONCLUSIONES, LIMITACIONES Y TRABAJO FUTURO
+% ==============================================================================
+\section{Conclusiones, limitaciones y trabajo futuro}
+\label{sec:observaciones}
+
+\subsection{Conclusiones}
+
+	\begin{enumerate}
+		\item \textbf{La jerarquía de memoria es el factor decisivo.} Pasar de leer la memoria global en cada iteración (naive) a reutilizar tiles en memoria compartida mejora el tiempo de cómputo entre $5{,}6\times$ y $18{,}5\times$ con el mismo dispositivo y el mismo problema. El rendimiento pasa de 89--401\,GFLOPS a 1649--2043\,GFLOPS.
+		\item \textbf{El techo práctico se mide, no se supone.} \texttt{cuBLAS} alcanza 6.05--8.85\,TFLOP/s en este dispositivo, y el código propio llega al 21--27\,\% de ese techo. Esa proporción es del mismo orden que la que la versión $i\text{-}k\text{-}j$ lograba frente a OpenBLAS en la Unidad 1 (11--25\,\%), lo que sugiere que ambas implementaciones propias comparten el mismo tipo de carencia: les falta reutilización en el nivel más alto de la jerarquía (registros y empaquetado de datos).
+		\item \textbf{El \textit{padding} no es una mejora universal.} Con bloques de $32 \times 32$ el tile sin \textit{padding} ya está libre de conflictos de banco, porque el warp mantiene constante \texttt{threadIdx.y} y la lectura del tile de $A$ se difunde. El \textit{padding} cuesta entre 0.2\,\% (a favor) y 2.9\,\% (en contra), y la predicción teórica coincide con la medición.
+		\item \textbf{El bus se vuelve el cuello de botella.} Con el kernel naïve la transferencia pesaba 10--19\,\% del tiempo total; con el kernel con tiling pesa 39--65\,\%, y para \texttt{cuBLAS} en $N=4096$ llega al 73\,\%. Optimizar el cómputo sin optimizar la comunicación deja de tener sentido a partir de cierto punto.
+		\item \textbf{El speedup depende de qué se mida.} Contar solo el kernel da $124\text{--}245\times$; contar la comunicación completa da $43\text{--}151\times$. Reportar ambas cifras —como exige la consigna— evita conclusiones infladas.
+	\end{enumerate}
+
+\subsection{Limitaciones}
+
+	\begin{itemize}
+		\item \textbf{Relojes no fijados:} servidor compartido; se registraron relojes, temperatura y \textit{throttling} antes y después de cada corrida, y la dispersión del kernel con tiling es baja (CV de 0.23\,\% a 0.78\,\%).
+		\item \textbf{Transferencias sin optimizar:} memoria paginable y sin solapamiento, lo que limita el ancho de banda efectivo a 4.6--5.2\,GB/s frente a los $\approx 12$\,GB/s prácticos del enlace PCIe Gen3 $\times$16.
+		\item \textbf{Sin perfilador:} Nsight Compute se intentó ejecutar y no produjo perfiles en este entorno (sin permisos de contadores para el usuario del servidor), de modo que la atribución de la brecha frente a \texttt{cuBLAS} se apoya en el modelo de \textit{roofline} y no en contadores de hardware.
+		\item \textbf{Alcance del \textit{tiling}:} un solo nivel de tile y un elemento de $C$ por hilo. No se implementaron \textit{register tiling}, vectorización \texttt{float4}, doble buffer ni \textit{software pipelining}.
+		\item \textbf{Formas de bloque:} la ablación de \textit{padding} se hizo con la forma que fijó el diseño ($32 \times 32$). El resultado negativo es correcto para esa forma y motiva repetir el experimento con un warp que abarque varias filas del tile.
+	\end{itemize}
+
+\subsection{Trabajo futuro}
+
+	\begin{enumerate}
+		\item \textbf{\textit{Register tiling}}: que cada hilo calcule un bloque de $4 \times 4$ elementos de $C$ para reutilizar cada valor cargado desde memoria compartida 4 veces más, que es el paso que separa un kernel docente de uno competitivo \cite{kirkhwu}.
+		\item \textbf{Vectorización \texttt{float4}} en las cargas desde memoria global y en los accesos a los tiles.
+		\item \textbf{Comunicación solapada}: memoria fijada (\textit{pinned}) y \textit{streams} para solapar las copias con el cómputo, y medir cuánto del 39--73\,\% de PCIe se recupera.
+		\item \textbf{Repetir la ablación de bancos} con bloques de $8 \times 32$ o con acceso transpuesto a los tiles, para obtener el caso en que el \textit{padding} sí cambia el resultado.
+		\item \textbf{Comparación con CUTLASS} y con implementaciones basadas en Tensor Cores, como referencia del estado del arte actual.
+		\item \textbf{Proyección MIMD} (Unidad 4 del sílabo): repartir el producto entre varios nodos, evaluando si el costo de comunicación supera la ganancia, como se discute en el plan del proyecto.
+	\end{enumerate}

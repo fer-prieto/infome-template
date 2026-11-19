@@ -1,0 +1,57 @@
+% ==============================================================================
+% 2. DESCRIPCIÓN DEL ALGORITMO
+% ==============================================================================
+\section{Descripción del algoritmo}
+
+\subsection{Producto de matrices y métricas}
+
+	Se mantiene la formulación de las unidades anteriores, $C[i][j] = \sum_{k=0}^{N-1} A[i][k]\,B[k][j]$, con $\text{FLOPs} = 2N^3$ y
+
+	\begin{equation}
+		\text{GFLOPS} = \frac{2\,N^3}{t_{\text{kernel}} \cdot 10^9}, \qquad
+		S_{\text{kernel}} = \frac{T_{\text{CPU}}}{t_{\text{kernel}}}, \qquad
+		S_{\text{total}} = \frac{T_{\text{CPU}}}{t_{\text{total}}}
+		\label{eqn:metricas}
+	\end{equation}
+
+	donde $T_{\text{CPU}}$ es la mediana de \texttt{cpu\_ikj} medida en el mismo servidor. Se reporta también el porcentaje frente a \texttt{cuBLAS}, $\text{GFLOPS}_{\text{tiled}} / \text{GFLOPS}_{\text{cublas}} \cdot 100$, que es el análogo del «\% de OpenBLAS» de la Unidad 1.
+
+\subsection{Kernel con memoria compartida (tiling)}
+
+	Cada bloque calcula un tile de $C$ de $32 \times 32$ elementos con $32 \times 32 = 1024$ hilos, es decir, \textbf{un hilo por elemento} del tile. El bloque recorre el eje $k$ en pasos de 32 y en cada paso:
+
+	\begin{enumerate}
+		\item Carga en memoria compartida la banda de $A$ (filas del tile) y la banda de $B$ (columnas del tile): $32 \times 32$ elementos cada una, con guardas de borde para $N$ no múltiplo de 32.
+		\item Se sincroniza con \texttt{\_\_syncthreads()} para garantizar que los 1024 hilos vean el tile completo.
+		\item Acumula los 32 productos correspondientes en un registro local.
+		\item Se vuelve a sincronizar antes de sobrescribir el tile en el paso siguiente.
+	\end{enumerate}
+
+	Los índices son los mismos de la Unidad 2, con el bloque de $32$ en lugar de $16$:
+
+	\begin{equation}
+		\text{fila} = \text{blockIdx.y}\cdot 32 + \text{threadIdx.y}, \qquad
+		\text{col} = \text{blockIdx.x}\cdot 32 + \text{threadIdx.x}
+		\label{eqn:indices}
+	\end{equation}
+
+	y las dos cargas cooperativas escriben en el tile compartido en la posición $(\text{threadIdx.y}, \text{threadIdx.x})$, leyendo $A[\text{fila}][k_t + \text{threadIdx.x}]$ y $B[k_t + \text{threadIdx.y}][\text{col}]$. El elemento de $C$ se escribe \textbf{una sola vez}, al salir del bucle de tiles. El bloque usa $2 \cdot 32 \cdot 32 \cdot 4 = 8$\,KiB de memoria compartida, muy por debajo de los 48\,KiB por SM del dispositivo, así que la ocupación no queda limitada por este recurso.
+
+	El beneficio teórico es inmediato: sin tiling cada elemento de $A$ y de $B$ se lee $N$ veces de memoria global; con tiles de $32 \times 32$ se lee $N/32$ veces, es decir, 32 veces menos tráfico para $N = 1024$ y 128 veces menos para $N = 4096$.
+
+\subsection{Variante con padding y análisis de bancos}
+
+	La variante con \textit{padding} declara los tiles con stride $33$ ($A_s[32][33]$, $B_s[32][33]$): cada fila del tile empieza un elemento más allá, desplazando el mapeo a bancos. La variante de referencia usa stride $32$.
+
+	El análisis habitual dice que con stride $32$ la lectura $A_s[\text{ty}][k]$ cae siempre en el banco $k$ para todos los hilos y produce un conflicto de 32 vías. Ese razonamiento supone que el warp abarca varias filas del tile, lo que \textbf{no ocurre con bloques de $32 \times 32$}: un warp agrupa 32 hilos consecutivos en el eje $x$, es decir, con \texttt{threadIdx.y} \textbf{fijo}. En consecuencia:
+
+	\begin{itemize}
+		\item $A_s[\text{ty}][k]$ es la \textbf{misma dirección} para los 32 hilos del warp: el hardware la difunde en una sola transacción (\textit{broadcast}), sin conflicto.
+		\item $B_s[k][\text{tx}]$ recorre bancos consecutivos, uno por hilo, también sin conflicto.
+	\end{itemize}
+
+	Por tanto, con esta forma de bloque el tile sin \textit{padding} ya es libre de conflictos y el \textit{padding} solo añade consumo de memoria compartida. El conflicto aparecería si el warp abarcara varias filas del tile, por ejemplo con bloques de $8 \times 32$, donde $A_s[\text{ty}][k]$ cae en bancos distintos por cada valor de \texttt{ty}. La comparación experimental de la Sección~\ref{sec:res-u3} confirma el razonamiento: es el resultado negativo del reporte.
+
+\subsection{cuBLAS como referencia}
+
+	La implementación de referencia llama a \texttt{cublasSgemm} sin transponer y con los operandos \textbf{intercambiados}: como cuBLAS interpreta las matrices en orden por columnas, la identidad $C = A\,B \iff C^{\mathsf{T}} = B^{\mathsf{T}} A^{\mathsf{T}}$ permite calcular el producto \textit{row-major} pasando $B$ como primer operando y $A$ como segundo. Se mide con los mismos eventos CUDA y con las mismas matrices que el código propio, y su papel es exclusivamente comparativo: fija el techo práctico del dispositivo tal como OpenBLAS fijó el de la CPU.

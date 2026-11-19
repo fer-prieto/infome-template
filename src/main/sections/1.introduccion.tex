@@ -1,0 +1,21 @@
+% ==============================================================================
+% 1. INTRODUCCIÓN, OBJETIVOS Y ANTECEDENTES
+% ==============================================================================
+\section{Introducción y objetivos}
+
+	La Unidad 2 mostró que el kernel naive apenas alcanza el 3\,\% del techo del dispositivo porque cada hilo lee de memoria global $2N$ elementos para producir una suma. El objetivo de la Unidad 3 es atacar exactamente ese problema: \textbf{reutilizar los datos en memoria compartida} para que cada elemento de $A$ y de $B$ se lea de memoria global una sola vez por bloque y se consuma muchas veces desde el chip. Los objetivos concretos son:
+
+	\begin{enumerate}
+		\item \textbf{Implementar} un kernel con \textit{tiling}: bloques de $32 \times 32$ hilos que cargan cooperativamente submatrices de $A$ y $B$ en memoria compartida y se sincronizan con \texttt{\_\_syncthreads()} entre carga y consumo.
+		\item \textbf{Aislar el efecto de los conflictos de banco} comparando la variante sin \textit{padding} con una variante cuyo tile tiene una columna extra (stride $33$).
+		\item \textbf{Medir \texttt{cuBLAS}} en el mismo dispositivo como techo práctico, del mismo modo que OpenBLAS se usó como techo de la CPU en la Unidad 1, y expresar el resultado propio como porcentaje de ese techo.
+		\item \textbf{Consolidar el análisis} del costo de comunicación: con un kernel un orden de magnitud más rápido, la fracción del tiempo total que consume el bus PCIe cambia por completo.
+	\end{enumerate}
+
+	El alcance sigue siendo FP32, matrices cuadradas de $1024^2$, $2048^2$ y $4096^2$, sin \textit{streams} ni memoria fijada, y sin extensiones de \textit{register tiling} ni vectorización \texttt{float4}, que quedan como trabajo futuro.
+
+\subsection{Antecedentes}
+
+	El \textit{tiling} o bloqueo es la técnica clásica para GEMM en GPU: el bloque de hilos coopera para traer un tile de $A$ y uno de $B$ a memoria compartida, y cada hilo acumula su elemento de $C$ desde ahí, de modo que la memoria global se recorre $N/32$ veces menos \cite{kirkhwu}. La memoria compartida está organizada en 32 bancos de 4 bytes por SM; dos hilos que acceden a direcciones del mismo banco en la misma transacción serializan el acceso, y el remedio habitual es desplazar una columna el tile (\textit{padding}) para romper la periodicidad de direcciones \cite{nvidia}. Este reporte verifica experimentalmente cuándo ese remedio es necesario y cuándo no.
+
+	El estado del arte en GPU lo representan bibliotecas como cuBLAS y CUTLASS, con empaquetado de datos, \textit{register tiling} y micro-kernels específicos por arquitectura; el trabajo de Goto y van de Geijn describe la lógica equivalente en CPU \cite{goto2008}. Igual que en la Unidad 1, esas bibliotecas se usan \textbf{solo como referencia comparativa} a través de su API, no son objeto de reimplementación.

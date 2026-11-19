@@ -1,0 +1,136 @@
+% ==============================================================================
+% 5. RESULTADOS Y ANÁLISIS
+% ==============================================================================
+\section{Resultados y análisis}
+\label{sec:res-u3}
+
+	Los valores provienen de \texttt{results/unidad3/summary\_\textless run\textgreater{}.csv}; los tiempos son medianas de 5 repeticiones medidas con 1 calentamiento previo. Todas las implementaciones se validaron contra \texttt{cpu\_ikj} del servidor.
+
+\subsection{Tiempos y rendimiento}
+
+	\begin{table}[H]
+		\centering
+		\caption{Tiempo de cómputo puro, tiempo total y rendimiento de las cuatro implementaciones.}
+		\begin{tabular}{llcccr}
+			\hline
+			\textbf{Implementación} & \textbf{Tipo} & \textbf{N} & \textbf{$t_{\text{kernel}}$ (s)} & \textbf{$t_{\text{total}}$ (s)} & \textbf{GFLOPS} \bigstrut\\
+			\hline
+			gpu\_naive & propia & 1024 & 0.024131 & 0.026460 & 88.99 \\
+			gpu\_tiled & propia & 1024 & 0.001302 & 0.003734 & 1649.43 \\
+			gpu\_tiled\_pad & propia & 1024 & 0.001299 & 0.003692 & 1652.85 \\
+			gpu\_cublas & referencia & 1024 & 0.000355 & 0.002757 & 6047.48 \\
+			gpu\_naive & propia & 2048 & 0.042868 & 0.051981 & 400.76 \\
+			gpu\_tiled & propia & 2048 & 0.008410 & 0.018779 & 2042.84 \\
+			gpu\_tiled\_pad & propia & 2048 & 0.008527 & 0.018880 & 2014.71 \\
+			gpu\_cublas & referencia & 2048 & 0.001966 & 0.012345 & 8740.69 \\
+			gpu\_naive & propia & 4096 & 0.394831 & 0.437194 & 348.10 \\
+			gpu\_tiled & propia & 4096 & 0.069973 & 0.114040 & 1964.18 \\
+			gpu\_tiled\_pad & propia & 4096 & 0.072038 & 0.114052 & 1907.87 \\
+			gpu\_cublas & referencia & 4096 & 0.015529 & 0.057369 & 8850.38 \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:resultados-u3}
+	\end{table}
+
+	El kernel con tiling reduce el tiempo de cómputo entre $5{,}6\times$ y $18{,}5\times$ respecto del naive: $18{,}48\times$ en $N=1024$ (de 24.13 a 1.302\,ms), $5{,}10\times$ en $N=2048$ y $5{,}64\times$ en $N=4096$. La mejora es mayor en el tamaño pequeño porque ahí el naive es especialmente ineficiente (ver Unidad 2) y el tiled mantiene un rendimiento alto y estable: 1649, 2043 y 1964\,GFLOPS, con un coeficiente de variación del tiempo de kernel de 0.23\,\%, 0.29\,\% y 0.78\,\%.
+
+\subsection{Speedup frente a la CPU y porcentaje de cuBLAS}
+
+	\begin{table}[H]
+		\centering
+		\caption{Speedup respecto de \texttt{cpu\_ikj} del servidor y porcentaje del techo \texttt{cuBLAS}.}
+		\begin{tabular}{lcccc}
+			\hline
+			\textbf{Implementación} & \textbf{N} & \textbf{$S_{\text{kernel}}$} & \textbf{$S_{\text{total}}$} & \textbf{\% de cuBLAS} \bigstrut\\
+			\hline
+			gpu\_naive & 1024 & 6.69$\times$ & 6.10$\times$ & 1.47\,\% \\
+			gpu\_tiled & 1024 & 123.91$\times$ & 43.20$\times$ & 27.27\,\% \\
+			gpu\_tiled\_pad & 1024 & 124.16$\times$ & 43.69$\times$ & 27.33\,\% \\
+			gpu\_naive & 2048 & 31.88$\times$ & 26.29$\times$ & 4.59\,\% \\
+			gpu\_tiled & 2048 & 162.49$\times$ & 72.77$\times$ & 23.37\,\% \\
+			gpu\_tiled\_pad & 2048 & 160.25$\times$ & 72.38$\times$ & 23.05\,\% \\
+			gpu\_naive & 4096 & 43.49$\times$ & 39.28$\times$ & 3.93\,\% \\
+			gpu\_tiled & 4096 & 245.41$\times$ & 150.58$\times$ & 22.19\,\% \\
+			gpu\_tiled\_pad & 4096 & 238.38$\times$ & 150.57$\times$ & 21.56\,\% \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:speedup-u3}
+	\end{table}
+
+	Frente a \texttt{cpu\_ikj} del servidor, el kernel con tiling llega a $S_{\text{kernel}} = 124\times$, $162\times$ y $245\times$; si se cuenta la comunicación completa, el speedup baja a $43\times$, $73\times$ y $151\times$. Frente a \texttt{cuBLAS}, el código propio alcanza entre el 21\,\% y el 27\,\% del techo, una proporción comparable al 11--25\,\% que la versión $i\text{-}k\text{-}j$ lograba frente a OpenBLAS en la Unidad 1.
+
+\subsection{Ablación de padding: resultado negativo}
+
+	\begin{table}[H]
+		\centering
+		\caption{Efecto del \textit{padding} en los tiles (\textit{stride} 33 frente a 32).}
+		\begin{tabular}{cccc}
+			\hline
+			\textbf{N} & \textbf{GFLOPS sin padding} & \textbf{GFLOPS con padding} & \textbf{$\Delta$} \bigstrut\\
+			\hline
+			1024 & 1649.43 & 1652.85 & $+0.21$\,\% \\
+			2048 & 2042.84 & 2014.71 & $-1.38$\,\% \\
+			4096 & 1964.18 & 1907.87 & $-2.87$\,\% \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:padding-u3}
+	\end{table}
+
+	El \textit{padding} \textbf{no aporta rendimiento} y en los tamaños grandes cuesta entre 1.4\,\% y 2.9\,\%, exactamente lo que predice el análisis de bancos de la Sección 2.3: con bloques de $32 \times 32$ el warp mantiene \texttt{threadIdx.y} constante, la lectura $A_s[\text{ty}][k]$ se difunde en una sola transacción y $B_s[k][\text{tx}]$ recorre bancos consecutivos, de modo que \textbf{no existía conflicto que eliminar}. La penalización proviene de la memoria compartida adicional ($33$ en lugar de $32$ columnas por fila) y de perder la alineación natural de los tiles.
+
+	Este es un resultado negativo con valor metodológico: confirma que el remedio clásico solo es necesario cuando el patrón de acceso lo justifica, y sugiere que la ablación debería repetirse con una forma de bloque cuyo warp abarque varias filas del tile (por ejemplo $8 \times 32$) para observar el fenómeno que el \textit{padding} corrige.
+
+\subsection{Costo de comunicación}
+
+	\begin{table}[H]
+		\centering
+		\caption{Fracción del tiempo total consumida por las transferencias y ancho de banda efectivo.}
+		\begin{tabular}{cccccc}
+			\hline
+			\textbf{Implementación} & \textbf{N} & \textbf{$t_{\text{transf}}$ (ms)} & \textbf{Fracción} & \textbf{Volumen (MB)} & \textbf{GB/s} \bigstrut\\
+			\hline
+			gpu\_tiled & 1024 & 2.43 & 65.1\,\% & 12.6 & 5.18 \\
+			gpu\_tiled & 2048 & 10.37 & 55.2\,\% & 50.3 & 4.85 \\
+			gpu\_tiled & 4096 & 44.07 & 38.6\,\% & 201.3 & 4.57 \\
+			gpu\_cublas & 4096 & 41.84 & 72.9\,\% & 201.3 & 4.81 \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:transf-u3}
+	\end{table}
+
+	Al acelerar el cómputo, la comunicación pasa a dominar: con el kernel con tiling el PCIe consume el 65\,\% del tiempo total en $N=1024$ y el 39\,\% en $N=4096$, mientras que con el naive eran el 10--19\,\%. Para \texttt{cuBLAS} en $N=4096$ la copia representa el 73\,\% del tiempo total: el límite del sistema dejó de ser la GPU y pasó a ser el bus. El ancho de banda efectivo (4.6--5.2\,GB/s) es estable y no depende de la implementación, porque es una propiedad del esquema de copia: memoria paginable, sin memoria fijada (\textit{pinned}) y sin solapar las transferencias con el cómputo mediante \textit{streams}.
+
+\subsection{Análisis con el modelo de roofline}
+
+	Para el kernel con tiling, cada bloque lee $2 \cdot 32 \cdot N$ elementos y realiza $2 \cdot 32^2 \cdot N$ operaciones, de modo que la intensidad aritmética crece con $N$ y, para los tamaños medidos, se sitúa muy por encima del punto de inflexión del dispositivo. El kernel está, por tanto, en el \textbf{régimen limitado por cómputo} y su distancia al techo no se explica por el tráfico de memoria, sino por la eficiencia con que cada hilo usa el dato cargado: un hilo del tile calcula un único elemento de $C$ y reutiliza cada valor de $A_s$ y $B_s$ solo $32$ veces, frente a los esquemas con \textit{register tiling} que reutilizan cada valor cargado decenas de veces desde registros \cite{williams2009}. Esa es la brecha entre el 22\,\% y el 27\,\% del techo de \texttt{cuBLAS} que se mide aquí, y también el límite de la mejora obtenida: pasar del naive al tiling resuelve el tráfico de memoria global, pero no la eficiencia aritmética por hilo.
+
+\subsection{Validación}
+
+	\begin{table}[H]
+		\centering
+		\caption{Validación de las cuatro implementaciones contra \texttt{cpu\_ikj}.}
+		\begin{tabular}{lccc}
+			\hline
+			\textbf{Implementación} & \textbf{N} & \textbf{Error relativo} & \textbf{¿Válido?} \bigstrut\\
+			\hline
+			gpu\_naive & 1024 / 2048 / 4096 & 0.00 & sí \\
+			gpu\_tiled & 1024 / 2048 / 4096 & 0.00 & sí \\
+			gpu\_tiled\_pad & 1024 / 2048 / 4096 & 0.00 & sí \\
+			gpu\_cublas & 1024 & $5.47 \times 10^{-7}$ & sí \\
+			gpu\_cublas & 2048 / 4096 & 0.00 & sí \bigstrut[b]\\
+			\hline
+		\end{tabular}
+		\label{tab:validacion-u3}
+	\end{table}
+
+	Los tres kernels propios reproducen \texttt{cpu\_ikj} \textbf{bit a bit}: acumulan en el mismo orden ($k$ creciente) y ambos usan FMA. \texttt{cuBLAS} reordena las sumas y difiere en $5.5 \times 10^{-7}$ relativo en $N = 1024$, cuatro órdenes por debajo de la tolerancia de $10^{-4}$; en los otros dos tamaños el reordenamiento de cuBLAS coincide con el de la CPU para estas matrices. La validación confirma tanto la correctitud del tiling (incluidas las guardas de borde y las dos sincronizaciones) como la del envoltorio de cuBLAS con operandos intercambiados.
+
+\subsection{Figuras}
+
+	\insertimage[\label{img:u3-gflops}]{unidad3/gflops_vs_n}{scale=0.62}{Rendimiento de las cuatro implementaciones frente a $N$ (escala logarítmica).}
+
+	\insertimage[\label{img:u3-speedup}]{unidad3/speedup_vs_n}{scale=0.62}{Speedup frente a \texttt{cpu\_ikj} del servidor para cada implementación.}
+
+	\insertimage[\label{img:u3-padding}]{unidad3/padding_vs_n}{scale=0.62}{Ablación de \textit{padding}: el tile sin \textit{padding} ya es libre de conflictos de banco.}
+
+	\insertimage[\label{img:u3-tiempo}]{unidad3/tiempo_vs_n}{scale=0.62}{Tiempo de cómputo puro de cada implementación frente a $N$.}

@@ -1,4 +1,3 @@
-
 \begin{abstractd}
-	\lipsum[1] % Párrafo ejemplo, se puede borrar
+	Este reporte cierra el proyecto con la tercera entrega del producto de matrices $C = A \times B$ en FP32. Se implementa desde cero un \textbf{kernel con memoria compartida (tiling)} de $32 \times 32$ hilos, se compara con una variante con \textit{padding} en los tiles para aislar el efecto de los conflictos de banco y se mide \texttt{cuBLAS} como techo práctico del dispositivo. Para $N = 1024$, $2048$ y $4096$ el kernel con tiling alcanza $1649$, $2043$ y $1964$\,GFLOPS, es decir $18{,}5\times$, $5{,}1\times$ y $5{,}6\times$ más que el kernel naive de la Unidad 2, y entre el 21\,\% y el 27\,\% de \texttt{cuBLAS}. El \textit{padding}, contra lo previsto, \textbf{no mejora el rendimiento} ($+0{,}2$\,\%, $-1{,}4$\,\%, $-2{,}9$\,\%): con bloques de $32 \times 32$ cada warp lee el tile de $A$ con dirección uniforme (\textit{broadcast}), de modo que no hay conflicto de banco que eliminar. Con el kernel rápido, la transferencia por PCIe pasa a representar hasta el 65\,\% del tiempo total.
 \end{abstractd}

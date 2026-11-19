@@ -1,0 +1,15 @@
+% ==============================================================================
+% 4. METODOLOGÍA
+% ==============================================================================
+\section{Metodología}
+
+	\begin{itemize}
+		\item \textbf{Generación de datos:} matrices en $[-1, 1]$ con semilla fija $42$ y streams independientes para $A$ (stream 0) y $B$ (stream 1), con el mismo generador SplitMix64 de la Unidad 1. Como el binario de GPU reutiliza la biblioteca C++ de la Unidad 1, las matrices y el checksum son \textbf{idénticos} en ambas herramientas.
+		\item \textbf{Medición del kernel:} dos eventos CUDA (\texttt{cudaEventRecord}) registrados en el stream por defecto alrededor del lanzamiento, con \texttt{cudaEventSynchronize} antes de leer el resultado. Los eventos se crean y destruyen en cada medición y \textbf{nunca} envuelven reservas de memoria ni transferencias.
+		\item \textbf{Medición del tiempo total:} los mismos eventos rodean ahora $A_{H\to D}$, $B_{H\to D}$, kernel y $C_{D\to H}$. Las copias usan el mismo espacio de host alineado a 64 bytes que la Unidad 1 y son \textbf{paginables} (no se usó memoria fijada ni \textit{streams}).
+		\item \textbf{Calentamiento y repeticiones:} 1 ejecución de calentamiento no medida (para que las páginas de la GPU estén residentes) y 5 repeticiones medidas por combinación (implementación, $N$). Se reporta la \textbf{mediana}, junto con mínimo, media, desviación estándar y coeficiente de variación.
+		\item \textbf{Protocolo por ejecución:} en cada repetición se mide primero el kernel solo y después el ciclo completo. El checksum de $C$ (suma en doble precisión, la misma función de la Unidad 1) se calcula en todas las ejecuciones y debe ser idéntico entre repeticiones.
+		\item \textbf{Speedup:} $S_{\text{kernel}} = T_{\text{CPU}} / t_{\text{kernel}}$ y $S_{\text{total}} = T_{\text{CPU}} / t_{\text{total}}$, con $T_{\text{CPU}}$ = mediana de \texttt{cpu\_ikj} \textbf{medida en este servidor}. Se re-midió la CPU porque los tiempos de la Unidad 1 provienen de otra máquina (portátil con WSL2) y usarlos como denominador sesgaría el speedup.
+		\item \textbf{Validación:} el resultado del dispositivo se compara con \texttt{cpu\_ikj} calculado en el servidor. Se reportan el error relativo de Frobenius $\lVert C - C_{\text{ref}} \rVert_F / \lVert C_{\text{ref}} \rVert_F$ y el error absoluto máximo, ambos calculados en \texttt{double}; se acepta si el error relativo es $\leq 10^{-4}$. Si la validación falla, el proceso termina con código de salida 3 y la corrida se descarta.
+		\item \textbf{Reproducibilidad:} todo el flujo (\texttt{check} $\to$ \texttt{build} $\to$ CPU $\to$ GPU $\to$ agregación $\to$ tablas $\to$ figuras) está automatizado en \texttt{run\_all.sh}, con sandbox aislado, marcadores de etapa y registro de las versiones de nvcc, g++, driver y flags en \texttt{build\_\textless run\textgreater{}.txt}.
+	\end{itemize}
